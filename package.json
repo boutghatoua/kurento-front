@@ -1,6 +1,11 @@
 {
   "name": "kurento-angular",
-  "version": "0.0.0",
+  "description": "my version of angular-kurento",
+  "version": "1.0.0",
+  "keywords": [
+    "angular",
+    "kurento"
+  ],
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -12,13 +17,18 @@
   "private": true,
   "dependencies": {
     "@angular/animations": "~11.2.9",
+    "@angular/cdk": "~11.2.8",
     "@angular/common": "~11.2.9",
     "@angular/compiler": "~11.2.9",
     "@angular/core": "~11.2.9",
     "@angular/forms": "~11.2.9",
+    "@angular/material": "~11.2.8",
     "@angular/platform-browser": "~11.2.9",
     "@angular/platform-browser-dynamic": "~11.2.9",
     "@angular/router": "~11.2.9",
+    "@stomp/ng2-stompjs": "^8.0.0",
+    "@types/kurento-utils": "^6.7.1",
+    "kurento-utils": "^6.16.0",
     "rxjs": "~6.6.0",
     "tslib": "^2.0.0",
     "zone.js": "~0.11.3"
