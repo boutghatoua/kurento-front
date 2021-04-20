@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import {  MatToolbarModule} from '@angular/material/toolbar';
 import {FormsModule} from '@angular/forms';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 
 @NgModule({
@@ -24,7 +25,8 @@ import {FormsModule} from '@angular/forms';
     MatMenuModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    FormsModule
+    FormsModule,
+    BrowserAnimationsModule
   ],
   exports: [
     CommonModule,

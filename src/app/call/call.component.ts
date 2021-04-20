@@ -1,43 +1,26 @@
-import {Component, ElementRef, OnDestroy, OnInit, ViewChild} from '@angular/core';
-import {WebRtcPeer} from 'kurento-utils';
-import {RxStompService} from '@stomp/ng2-stompjs';
-import {User} from './user';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
+import { webSocket } from 'rxjs/webSocket';
+import { WebRtcPeer } from 'kurento-utils';
+import { User } from './user';
 import { ɵHAMMER_PROVIDERS__POST_R3__ } from '@angular/platform-browser';
+
+
 
 
 @Component({
   selector: 'app-call',
   templateUrl: './call.component.html',
-  styleUrls: ['./call.component.css']
+  styleUrls: ['./call.component.css'],
 })
 export class CallComponent implements OnInit, OnDestroy {
 
-  @ViewChild('local-video')
-  localVideo: ElementRef<HTMLVideoElement>;
-
-  @ViewChild('remote-video')
-  remoteVideo: ElementRef<HTMLVideoElement>;
-
-
-  public callWith: string;
-  public currentUser: User;
-  public poster: string;
-
-  private topicSubscription: any;
-  private webRtcPeer: WebRtcPeer;
-  private inCall: boolean;
-  private inPlay: boolean;
-  private hasRecord: boolean;
-
-
-  public modes: string[];
-  public mode: string;
-
-  constructor(
-    private rxStompService: RxStompService
-  ) {
-    this.currentUser.name = '';
-    this.currentUser.id = 999999;
+  constructor() {
     this.inCall = false;
     this.inPlay = false;
     this.hasRecord = false;
@@ -45,16 +28,45 @@ export class CallComponent implements OnInit, OnDestroy {
     this.modes = ['default', 'audio', 'video'];
     this.poster = '/assets/images/webrtc.png';
   }
-  ngOnDestroy(): void {
-    this.topicSubscription.unsubscribe();
-    this.rxStompService.deactivate();
-  }
+  @ViewChild('local-video')
+  localVideo: ElementRef<HTMLVideoElement>;
 
-  ngOnInit(): void {
+  @ViewChild('remote-video')
+  remoteVideo: ElementRef<HTMLVideoElement>;
 
-  }
+  public callWith: string;
+  public currentUser = new User('default');
+  public poster: string;
 
-  private onPlayResponse(payload): void {  // gerer la reponse du play
+
+  private webRtcPeer: WebRtcPeer;
+  private inCall: boolean;
+  private inPlay: boolean;
+  private hasRecord: boolean;
+  public subject = webSocket('ws://localhost:3000');// the servers adress
+  public modes: string[];
+  public mode: string;
+  
+  
+  
+
+ ngOnDestroy(): void {
+    
+}
+
+ngOnInit(): void {
+  this.subject.subscribe(
+    msg=>this.onmessage(msg),
+    err=>console.error(err),
+    ()=>console.log('completed')
+   );
+}
+  
+  
+
+
+ public onPlayResponse(payload): void {
+    // gerer la reponse du play
     if (payload.response === 'accepted') {
       this.webRtcPeer.processAnswer(payload.sdpAnswer, (error) => {
         if (error) {
@@ -67,7 +79,8 @@ export class CallComponent implements OnInit, OnDestroy {
     }
   }
 
-  private onCallResponse(payload): void { // gerer la reponse de l'appel
+ public  onCallResponse(payload): void {
+    // gerer la reponse de l'appel
     if (payload.response === 'accepted') {
       this.webRtcPeer.processAnswer(payload.sdpAnswer, (error) => {
         if (error) {
@@ -80,7 +93,8 @@ export class CallComponent implements OnInit, OnDestroy {
     }
   }
 
-  private onStartCommunication(payload): void { // fach ghaybda ydouz appel
+public onStartCommunication(payload): void {
+    // fach ghaybda ydouz appel
     this.inCall = true;
     this.webRtcPeer.processAnswer(payload.sdpAnswer, (error) => {
       if (error) {
@@ -89,30 +103,34 @@ export class CallComponent implements OnInit, OnDestroy {
     });
   }
 
-  private onStopCommunication(): void { // fach ghay7bbs appel
+  public onStopCommunication(): void {
+    // fach ghay7bbs appel
     this.finalizeWebRtcPeer();
   }
 
-  register(): void {  // enregistrer l'utilisateur
-    this.sendStompMessage('register', this.currentUser);
+register(): void {
+    // enregistrer l'utilisateur
+    this.sendMessage({action: 'register', user : this.currentUser});
     console.log(this.currentUser);
   }
-  getName(name): void{ // retourner le nom de l'utilisqteur
+getName(name:string): void {
+    // retourner le nom de l'utilisqteur
     this.currentUser.name = name;
   }
 
-  public call(): void { // appeler call
+  public call(): void {
+    // appeler call
     this.inCall = true;
     const options = {
       mediaConstraints: {
         audio: this.isWithAudio(),
-        video: this.isWithVideo()
+        video: this.isWithVideo(),
       },
       localVideo: this.localVideo,
       remoteVideo: this.remoteVideo,
       onicecandidate: (iceCandidate: any) => {
-        this.sendStompMessage('ice-candidate', {candidate: iceCandidate});
-      }
+        this.sendMessage({action: 'iceCandidate',  candidate: iceCandidate });
+      },
     };
     this.webRtcPeer = WebRtcPeer.WebRtcPeerSendrecv(options, (error) => {
       if (error) {
@@ -123,17 +141,18 @@ export class CallComponent implements OnInit, OnDestroy {
         if (error) {
           console.error(error);
         }
-        this.sendStompMessage('call', {
+        this.sendMessage({action: 'call', 
           from: this.currentUser.name,
           to: this.callWith,
           sdpOffer: sdp,
-          mode: this.mode
+          mode: this.mode,
         });
       });
     });
   }
 
-  private onIncomingCall(payload): void { // recevoir un appel
+  private onIncomingCall(payload): void {
+    // recevoir un appel
     if (confirm('the user ' + payload.from + ' is calling you accept?')) {
       this.callWith = payload.from;
       this.inCall = true;
@@ -141,13 +160,13 @@ export class CallComponent implements OnInit, OnDestroy {
       const options = {
         mediaConstraints: {
           audio: this.isWithAudio(),
-          video: this.isWithVideo()
+          video: this.isWithVideo(),
         },
         localVideo: this.localVideo,
         remoteVideo: this.remoteVideo,
         onicecandidate: (iceCandidate: any) => {
-          this.sendStompMessage('ice-candidate', {candidate: iceCandidate});
-        }
+          this.sendMessage({action: 'iceCandidate', candidate: iceCandidate });
+        },
       };
 
       this.webRtcPeer = WebRtcPeer.WebRtcPeerSendrecv(options, (error) => {
@@ -159,72 +178,91 @@ export class CallComponent implements OnInit, OnDestroy {
           if (error) {
             console.error(error);
           }
-          this.sendStompMessage('incoming-call-response', {
+          this.sendMessage({action: 'incomingCallResponse',
             from: payload.from,
             callResponse: 'accept',
             sdpOffer: sdp,
-            mode: this.mode
+            mode: this.mode,
           });
         });
       });
     } else {
       this.inCall = false;
-      this.sendStompMessage('incoming-call-response', {
+      this.sendMessage({action: 'incomingCallResponse', 
         from: payload.from,
         callResponse: 'reject',
-        message: 'user declined'
+        reason: 'user declined',
       });
       stop();
     }
   }
 
 
-
-
-
-
-// stop
-public stop(): void {
-    this.sendStompMessage('stop', {});
+  public play(): void { ///play video
+    this.inPlay = true;
+    const options = {
+      mediaConstraints: {
+        audio: this.isWithAudio(),
+        video: this.isWithVideo()
+      },
+      remoteVideo: this.remoteVideo,
+      onicecandidate: (iceCandidate: any) => {
+        this.sendMessage({action: 'iceCandidate', candidate: iceCandidate});
+      }
+    };
+    this.webRtcPeer = WebRtcPeer.WebRtcPeerRecvonly(options, (error) => {
+      if (error) {
+        console.error(error);
+      }
+      this.webRtcPeer.generateOffer((error: string, sdp: string) => {
+        this.sendMessage({action: 'play',
+          user: this.callWith,
+          sdpOffer: sdp
+        });
+      });
+    });
+  }
+  // stop
+  public stop(): void {
+    this.sendMessage({action: 'stop', });
     this.finalizeWebRtcPeer();
   }
 
-  public stopPlay(): void { // arrete le play
-    this.sendStompMessage('stop-play', {});
+  public stopPlay(): void {
+    // arrete le play
+    this.sendMessage({action:'stop-play' });
     this.finalizeWebRtcPeer();
+  } 
+
+  // send messages and see what happens
+  private sendMessage(message): void {
+    console.log('message sent');
+    this.subject.next(message);
+  }
+ 
+  private onIceCandidate(payload): void {
+    this.webRtcPeer.addIceCandidate(payload.candidate, (error) => {
+      if (error) {
+        return console.error('Error adding candidate: ' + error);
+      }
+    });
   }
 
-  // safi salina cummunication ghadi nfixiw dakchi nredouh kima kan
-   private finalizeWebRtcPeer(): void {
-    this.inCall = false;
-    this.inPlay = false;
-    this.hasRecord = true;
-
-    if (this.webRtcPeer) {
-      this.webRtcPeer.dispose();
-      this.webRtcPeer = null;
+  private onRegisterResponse(payload): void {
+    if (payload.response === 'accepted') {
+    } else {
+      console.log(payload.response);
     }
-    this.localVideo.nativeElement.setAttribute('src', '');
-    this.localVideo.nativeElement.setAttribute('poster', this.poster);
-    this.remoteVideo.nativeElement.setAttribute('src', '');
-    this.remoteVideo.nativeElement.setAttribute('poster', this.poster);
   }
-
-
-
-// send messages and see what happens
-  private sendStompMessage(destination: string, message: object): void {
-    const body = JSON.stringify(message);
-    console.log('Send message to ' + destination + ': ' + body);
-    this.rxStompService.publish({destination: '/' + destination, body});
-  }
-
-
-
 
   // Disable Buttons
   public disableCall(): boolean {
-    return this.callWith === '' || this.callWith == null || this.inCall || this.inPlay;
+    return (
+      this.callWith === '' ||
+      this.callWith == null ||
+      this.inCall ||
+      this.inPlay
+    );
   }
 
   public disableStop(): boolean {
@@ -232,13 +270,19 @@ public stop(): void {
   }
 
   public disablePlay(): boolean {
-    return this.callWith === '' || this.callWith == null || this.inCall || this.inPlay || !this.hasRecord;
+    return (
+      this.callWith === '' ||
+      this.callWith == null ||
+      this.inCall ||
+      this.inPlay ||
+      !this.hasRecord
+    );
   }
 
   public disableStopPlay(): boolean {
     return !this.inPlay;
   }
-// controll wach video wla ghi audio
+  // controll wach video wla ghi audio
   private isWithAudio(): boolean {
     return this.mode === 'audio' || this.mode === 'default';
   }
@@ -247,4 +291,60 @@ public stop(): void {
     return this.mode === 'video' || this.mode === 'default';
   }
 
+
+  // safi salina cummunication ghadi nfixiw dakchi nredouh kima kan
+  private finalizeWebRtcPeer(): void {
+    this.inCall   = false;
+    this.inPlay = false;
+    this.hasRecord = true;
+
+    if (this.webRtcPeer) {
+      this.webRtcPeer.dispose();
+      this.webRtcPeer = null;
+    }
+this.localVideo.nativeElement.setAttribute('src', '');
+this.localVideo.nativeElement.setAttribute('poster', this.poster);
+this.remoteVideo.nativeElement.setAttribute('src', '');
+this.remoteVideo.nativeElement.setAttribute('poster', this.poster);
+  }
+
+
+
+public onmessage = (Message) => {
+  const payload = JSON.parse(Message);
+  switch (payload.action) {
+    case 'registerResponse':
+      this.onRegisterResponse(payload);
+      break;
+    case 'callResponse':
+      this.onCallResponse(payload);
+      break;
+    case 'incomingCall':
+      this.onIncomingCall(payload);
+      break;
+    case 'startComunication':
+      this.onStartCommunication(payload);
+      break;
+    case 'stopCommunication':
+      this.onStopCommunication();
+      break;
+    case 'playResponse':
+      this.onPlayResponse(payload);
+      break;
+    case 'playEnd':
+      this.finalizeWebRtcPeer();
+      break;
+    case 'iceCandidate':
+      this.onIceCandidate(payload);
+      break;
+  }
 }
+
+
+
+}
+
+
+
+
+

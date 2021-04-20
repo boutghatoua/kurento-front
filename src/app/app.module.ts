@@ -9,6 +9,7 @@ import {MatRadioModule} from '@angular/material/radio';
 import {MatCardModule} from '@angular/material/card';
 import { CustomMaterialModule } from './material/material.module';
 import { FormsModule } from '@angular/forms';
+import { RxStompService } from '@stomp/ng2-stompjs';
 
 @NgModule({
   declarations: [
@@ -24,7 +25,7 @@ import { FormsModule } from '@angular/forms';
     CustomMaterialModule,
     FormsModule
   ],
-  providers: [],
+  providers: [RxStompService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
